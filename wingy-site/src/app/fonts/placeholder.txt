@@ -1,0 +1,3 @@
+This is a placeholder for font files. In a real implementation, you would place:
+- GeistVF.woff (Variable font)
+- GeistMonoVF.woff (Variable monospace font)
