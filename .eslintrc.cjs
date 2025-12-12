@@ -2,7 +2,7 @@
 
 module.exports = {
   root: true,
-  ignorePatterns: ["**/dist/**", "**/build/**", "**/node_modules/**"],
+  ignorePatterns: ["**/dist/**", "**/build/**", "**/node_modules/**", "wingy-site/**"],
   env: {
     es2022: true
   },
