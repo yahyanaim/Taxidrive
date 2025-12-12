@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taxidrive
+      POSTGRES_PASSWORD: taxidrive
+      POSTGRES_DB: taxidrive
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://taxidrive:taxidrive@db:5432/taxidrive
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "3000:3000"
+
+volumes:
+  db-data:
