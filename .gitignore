@@ -15,6 +15,22 @@ build/
 server/.env
 
 # IDE files
+node_modules
+.DS_Store
+.env
+.env.*
+!.env.example
+prisma/dev.db
+prisma/dev.db-journal
+dist
+coverage
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.local
+.DS_Store
 .vscode/
 .idea/
 *.swp
@@ -115,3 +131,10 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+.next
+.turbo
+coverage/
+.pytest_cache/
+__pycache__/
+venv/
+*.pyc
