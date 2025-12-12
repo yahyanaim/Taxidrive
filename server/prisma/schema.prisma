@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String         @id @default(cuid())
+  email           String         @unique
+  phone           String?
+  name            String
+  password        String
+  isActive        Boolean        @default(true)
+  isAdmin         Boolean        @default(false)
+  stripeCustomerId String?       @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  // Relations
+  rides           Ride[]
+  paymentMethods  PaymentMethod[]
+  transactions    Transaction[]
+  
+  @@map("users")
+}
+
+model Driver {
+  id                String         @id @default(cuid())
+  userId            String         @unique
+  licenseNumber     String         @unique
+  licenseExpiry     DateTime
+  vehicleMake       String
+  vehicleModel      String
+  vehicleYear       Int
+  vehiclePlate      String         @unique
+  vehicleColor      String
+  insuranceNumber   String
+  insuranceExpiry   DateTime
+  backgroundCheck   Boolean        @default(false)
+  isApproved        Boolean        @default(false)
+  rating            Float          @default(5.0)
+  totalRides        Int            @default(0)
+  totalEarnings     Float          @default(0)
+  stripeAccountId   String?        @unique
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relations
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rides             Ride[]
+  payouts           Payout[]
+  
+  @@map("drivers")
+}
+
+model Ride {
+  id                String         @id @default(cuid())
+  userId            String
+  driverId          String?
+  pickupAddress     String
+  dropoffAddress    String
+  pickupLat         Float
+  pickupLng         Float
+  dropoffLat        Float
+  dropoffLng        Float
+  distance          Float          // in kilometers
+  duration          Int            // in minutes
+  fare              Float
+  surgeMultiplier   Float          @default(1.0)
+  totalFare         Float
+  status            RideStatus     @default(PENDING)
+  paymentIntentId   String?        @unique
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  cancellationReason String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relations
+  user              User           @relation(fields: [userId], references: [id])
+  driver            Driver?        @relation(fields: [driverId], references: [id])
+  payment           Payment?
+  transaction       Transaction?
+  
+  @@map("rides")
+}
+
+model Payment {
+  id                String         @id @default(cuid())
+  rideId            String         @unique
+  userId            String
+  stripePaymentIntentId String      @unique
+  amount            Float
+  currency          String         @default("usd")
+  status            PaymentStatus  @default(PENDING)
+  paidAt            DateTime?
+  refundedAt        DateTime?
+  refundAmount      Float?
+  failureReason     String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relations
+  ride              Ride           @relation(fields: [rideId], references: [id])
+  user              User           @relation(fields: [userId], references: [id])
+  invoice           Invoice?
+  
+  @@map("payments")
+}
+
+model PaymentMethod {
+  id                String         @id @default(cuid())
+  userId            String
+  stripePaymentMethodId String      @unique
+  type              String         // card, bank_account, etc.
+  last4             String?
+  brand             String?
+  expMonth          Int?
+  expYear           Int?
+  isDefault         Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  
+  // Relations
+  user              User           @relation(fields: [userId], references: [id])
+  
+  @@map("payment_methods")
+}
+
+model Transaction {
+  id                String         @id @default(cuid())
+  userId            String
+  rideId            String?        @unique
+  type              TransactionType
+  stripeTransactionId String?      @unique
+  amount            Float
+  currency          String         @default("usd")
+  status            TransactionStatus @default(PENDING)
+  description       String?
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  
+  // Relations
+  user              User           @relation(fields: [userId], references: [id])
+  ride              Ride?          @relation(fields: [rideId], references: [id])
+  
+  @@map("transactions")
+}
+
+model Invoice {
+  id                String         @id @default(cuid())
+  paymentId         String         @unique
+  invoiceNumber     String         @unique
+  subtotal          Float
+  tax               Float          @default(0)
+  total             Float
+  currency          String         @default("usd")
+  status            InvoiceStatus  @default(DRAFT)
+  dueDate           DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relations
+  payment           Payment        @relation(fields: [paymentId], references: [id])
+  
+  @@map("invoices")
+}
+
+model Payout {
+  id                String         @id @default(cuid())
+  driverId          String
+  amount            Float
+  currency          String         @default("usd")
+  stripePayoutId    String?        @unique
+  status            PayoutStatus   @default(PENDING)
+  scheduledDate     DateTime?
+  paidAt            DateTime?
+  failureReason     String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  // Relations
+  driver            Driver         @relation(fields: [driverId], references: [id])
+  
+  @@map("payouts")
+}
+
+model WebhookEvent {
+  id                String         @id @default(cuid())
+  stripeEventId     String         @unique
+  type              String
+  processed         Boolean        @default(false)
+  processedAt       DateTime?
+  data              Json
+  createdAt         DateTime       @default(now())
+  
+  @@map("webhook_events")
+}
+
+// Enums
+enum RideStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum TransactionType {
+  PAYMENT
+  REFUND
+  PAYOUT
+  FEE
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
